@@ -12,3 +12,12 @@ feel free to add your own, eventually this will be part of the settings. This us
 
 It looks like this (note the subtle ticker bar at the top with the related prediction market to the news)
 ![Google search violates US antitrust law_ judge rules _ Semafor](https://github.com/user-attachments/assets/f3f629ce-498d-4c48-af36-48f51ab3e63e)
+
+## Usage
+If you would like to use this
+- clone / download the repo
+- head to [chrome://extensions](chrome://extensions)
+- click developer mode toggle in top right
+- click "load unpacked"
+- click on the downloaded (unzipped) folder
+- head to a supported website
