@@ -1,18 +1,21 @@
 let TIMELINE_SEMANTIC_THRESHOLD = 0.85;
 let SINGLE_TWEET_SEMANTIC_THRESHOLD = 0.803;
+let ARTICLE_SEMANTIC_THRESHOLD = 0.81;
 let MARKET_COUNT = 1;
 
 // Load the values from storage when the script starts
 function loadSettings() {
   chrome.storage.sync.get({
-      timelineThreshold: 0.85,
-      singleTweetThreshold: 0.803,
-      marketCount: 1
-  }, function(items) {
-      TIMELINE_SEMANTIC_THRESHOLD = items.timelineThreshold;
-      SINGLE_TWEET_SEMANTIC_THRESHOLD = items.singleTweetThreshold;
-      MARKET_COUNT = items.marketCount;
-      // console.log("Adjacent News Settings loaded:", items);
+    timelineThreshold: 0.85,
+    singleTweetThreshold: 0.803,
+    articleThreshold: 0.81,
+    marketCount: 1
+  }, function (items) {
+    TIMELINE_SEMANTIC_THRESHOLD = items.timelineThreshold;
+    SINGLE_TWEET_SEMANTIC_THRESHOLD = items.singleTweetThreshold;
+    ARTICLE_SEMANTIC_THRESHOLD = items.articleThreshold;
+    MARKET_COUNT = items.marketCount;
+    // console.log("Adjacent News Settings loaded:", items);
   });
 }
 
@@ -20,15 +23,18 @@ function loadSettings() {
 loadSettings();
 
 // Listen for changes to the stored values
-chrome.storage.onChanged.addListener(function(changes, namespace) {
+chrome.storage.onChanged.addListener(function (changes, namespace) {
   if (changes.timelineThreshold) {
-      TIMELINE_SEMANTIC_THRESHOLD = changes.timelineThreshold.newValue;
+    TIMELINE_SEMANTIC_THRESHOLD = changes.timelineThreshold.newValue;
   }
   if (changes.singleTweetThreshold) {
-      SINGLE_TWEET_SEMANTIC_THRESHOLD = changes.singleTweetThreshold.newValue;
+    SINGLE_TWEET_SEMANTIC_THRESHOLD = changes.singleTweetThreshold.newValue;
+  }
+  if (changes.ARTICLE_SEMANTIC_THRESHOLD) {
+    ARTICLE_SEMANTIC_THRESHOLD = changes.ARTICLE_SEMANTIC_THRESHOLD;
   }
   if (changes.marketCount) {
-      MARKET_COUNT = changes.marketCount.newValue;
+    MARKET_COUNT = changes.marketCount.newValue;
   }
   // console.log("Adjacent News Settings updated:", {
   //     TIMELINE_SEMANTIC_THRESHOLD,
@@ -36,6 +42,40 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
   //     MARKET_COUNT
   // });
 });
+
+let ticker;
+
+function createTicker() {
+  ticker = document.createElement('div');
+  ticker.id = 'ticker';
+  ticker.style.display = 'none';
+  ticker.style.padding = '10px'; // Added padding
+  ticker.style.textAlign = 'center'; // Centered the text
+  ticker.style.fontFamily = 'monospace'; // Made the font mono
+  document.body.prepend(ticker);
+}
+
+function showTicker() {
+  const pageTitle = document.title;
+
+  const apiUrl = `https://api.data.adj.news/api/markets/headline/${encodeURIComponent(pageTitle)}?count=${MARKET_COUNT}&threshold=${ARTICLE_SEMANTIC_THRESHOLD}`;
+  fetch(apiUrl, { method: 'GET' })
+    .then(response => response.json())
+    .then(markets => {
+      if (markets.length > 0) {
+        let market = markets[0];
+        if (market.link && market.question && market.probability) {
+          ticker.innerHTML = `
+            <a href="${market.link}" style="text-decoration: underline; text-decoration-style: dashed;">${market.question}: ${market.probability}%</a>
+          `;
+        }
+        ticker.style.display = 'block';
+      }
+    })
+    .catch(error => console.error('Error fetching markets:', error));
+}
+
+createTicker();
 
 let processedTweets = new Map();
 
@@ -45,12 +85,12 @@ function isSingleTweetPage() {
 
 function gatherVisibleTweets() {
   const tweetElements = document.querySelectorAll('article[data-testid="tweet"]');
-  
+
   tweetElements.forEach(tweetElement => {
     const tweetId = getTweetId(tweetElement);
     if (tweetId && !processedTweets.has(tweetId)) {
       const tweetTextElement = tweetElement.querySelector('div[data-testid="tweetText"]');
-      
+
       if (tweetTextElement) {
         const tweetText = tweetTextElement.textContent.trim();
         processedTweets.set(tweetId, null); // Set to null initially
@@ -58,11 +98,11 @@ function gatherVisibleTweets() {
         fetchMarketNews(tweetId, tweetText);
       }
     }
-    
+
     // Always try to add or update the indicator
     addProcessedIndicator(tweetElement);
   });
-  
+
   // console.log("Total processed tweets:", processedTweets.size);
 }
 
@@ -125,14 +165,14 @@ function addProcessedIndicator(tweetElement) {
         box-sizing: border-box;
         margin-top: 8px;
       `;
-      
+
       const iconSpan = document.createElement('span');
       iconSpan.innerHTML = '&#x2728;'; // Unicode for sparkles emoji
       iconSpan.style.cssText = `
         font-size: 20px;
         margin-right: 12px;
       `;
-      
+
       const textDiv = document.createElement('div');
       textDiv.style.cssText = `
         color: #ffffff;
@@ -143,14 +183,14 @@ function addProcessedIndicator(tweetElement) {
         text-decoration: underline;
         text-decoration-style: dashed;
       `;
-      
+
       indicator.appendChild(iconSpan);
       indicator.appendChild(textDiv);
-      
+
       buttonContainer.parentNode.insertBefore(indicator, buttonContainer.nextSibling);
     }
   }
-  
+
   if (indicator) {
     // indicator was added, now update it
     const textDiv = indicator.querySelector('div');
@@ -191,8 +231,15 @@ setInterval(gatherVisibleTweets, 500); // Run every 0.5 seconds
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "showTicker") {
-    // console.log("got showTicker action request, gathering tweets...");
-    gatherVisibleTweets();
+    const currentUrl = window.location.href;
+    const url = new URL(currentUrl);
+    const domain = url.hostname.split('.').slice(-2).join('.');
+
+    if (domain === 'x.com' || domain === 'twitter.com') {
+      gatherVisibleTweets();
+    } else {
+      showTicker()
+    }
   }
 });
 
