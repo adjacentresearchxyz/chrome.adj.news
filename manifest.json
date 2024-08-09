@@ -1,17 +1,16 @@
 {
-    "manifest_version": 3,
+    "manifest_version": 4,
     "name": "Adjacent News",
     "version": "1.0",
     "description": "Add context to your News",
-    "permissions": ["activeTab", "storage", "tabs"],
+    "permissions": ["activeTab", "storage", "tabs", "https://api.data.adj.news/"],
     "background": {
       "service_worker": "background.js"
     },
     "content_scripts": [
       {
         "matches": ["*://*/*"],
-        "js": ["content.js"],
-        "css": ["ticker.css"]
+        "js": ["content.js"]
       }
     ],
     "action": {
