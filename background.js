@@ -12,7 +12,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const url = new URL(tab.url);
     const domain = url.hostname.split('.').slice(-2).join('.');
       
-    if ((whitelist.includes(domain) || ['wsj.com', 'semafor.com', 'reuters.com', "x.com", "twitter.com"].includes(domain))) {
+    if ((whitelist.includes(domain) || ['wsj.com', 'semafor.com', 'nytimes.com', 'reuters.com', "x.com", "twitter.com"].includes(domain))) {
       chrome.tabs.sendMessage(tabId, { action: "showTicker" });
     }
   }
